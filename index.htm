@@ -1,0 +1,360 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      *{padding: 0; margin: 0;}
+      canvas{background: #eee; display: block; margin: 0 autio;}
+      
+      *{padding: 0; margin: 0;}
+      canvas{background: #eee; display: block; margin: 0 autio;}
+      
+      html {
+        font-size: 175%;
+      }
+      
+      input {
+        font-size: 100%;
+        width: 80;
+      }
+      
+      button {
+        font-size: 100%;
+        padding: 10;
+      }
+
+      body {
+        font-size: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    Width:<input type="number" id="width" value="10" min="5" max="100"></br>
+    Height:<input type="number" id="height" value="10" min="5" max="100"></br>
+    <button id="generate">Generate Maze</button>
+    <button id="solvemaze">Solve Maze</button>
+    
+    
+    <canvas id="myCanvas" width="100" height="320"></canvas>
+
+
+    <table>
+    <tr><td></td><td><button id="up" style="height:100px;width:100px">Up</button></td><td></td></tr>
+    <tr><td><button id="left" style="height:100px;width:100px">Left</button></td><td></td><td><button id="right" style="height:100px;width:100px">Right</button></td></tr>
+    <tr><td></td><td><button id="down" style="height:100px;width:100px">Down</button></td><td></td></tr>
+    </table>
+
+    <script>
+
+      var canvas = document.getElementById("myCanvas");
+      var ctx = canvas.getContext("2d");
+
+      ctx.canvas.width  = Math.min(window.innerWidth*.50,window.innerHeight*.50);
+      ctx.canvas.height = Math.min(window.innerWidth*.50,window.innerHeight*.50);
+
+      let cols = document.getElementById("width").value;
+      let rows = document.getElementById("height").value;
+
+      let rectWidth = canvas.width / cols;
+      let rectHeight = canvas.height / rows;
+
+      let startx = 0;
+      let starty = 0;
+      let endx = 0;
+      let endy = 0;
+
+      let x = 0;
+      let y = 0;
+
+      let cells = [];
+
+      function canMoveUp(x,y){
+        if(y==0){
+          return false;
+        }else if(window.cells[x][y-1].visited){
+          return false;
+        }else{
+          return true;
+        }
+      }
+
+      function canMoveDown(x,y){
+        if(y==rows-1){
+          return false;
+        }else if(window.cells[x][y+1].visited){
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      function canMoveLeft(x,y){
+        if(x==0){
+          return false;
+        }else if(window.cells[x-1][y].visited){
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      function canMoveRight(x,y){
+        if(x==cols-1){
+          return false;
+        }else if(window.cells[x+1][y].visited){
+          return false;
+        } else {
+          return true;
+        }
+      }
+
+      function knockwall(x,y){
+        window.cells[x][y].visited = true;
+
+        while(canMoveUp(x,y) || canMoveDown(x,y) || canMoveLeft(x,y) || canMoveRight(x,y)) {
+
+          let options = [];
+
+          if(canMoveUp(x,y)){
+            options.push("up");
+          }
+          if(canMoveDown(x,y)){
+            options.push("down");
+          }
+          if(canMoveLeft(x,y)){
+            options.push("left");
+          }
+          if(canMoveRight(x,y)){
+            options.push("right");
+          }
+
+          let selection = Math.floor(Math.random() * options.length);
+
+          //up
+          if(options[selection] == "up"){
+            window.cells[x][y].top = false;
+            knockwall(x,y-1);
+          }
+
+          //down
+          if(options[selection] == "down"){
+            window.cells[x][y+1].top = false;
+            knockwall(x,y+1);
+          }
+
+          //left
+          if(options[selection] == "left"){
+            window.cells[x][y].left = false;
+            knockwall(x-1,y);
+          }
+
+          //right
+          if(options[selection] == "right"){
+            window.cells[x+1][y].left = false;
+            knockwall(x+1,y);
+          }
+
+        }
+      }
+
+      function generateMaze(){
+        cols = document.getElementById("width").value;
+        rows = document.getElementById("height").value;
+
+        rectWidth = canvas.width / cols;
+        rectHeight = canvas.height / rows;
+
+        window.cells = null;
+        window.cells = [];
+
+        for(var c = 0; c < cols; c++){
+          window.cells[c] = [];
+          for(var r = 0; r < rows; r++){
+            window.cells[c][r] = {top:true, left:true, visited:false};
+          }
+        }
+
+        knockwall(Math.floor(Math.random() * cols),Math.floor(Math.random() * rows));
+
+        drawMaze();
+      }
+
+      function drawMaze(){
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for(var c = 0; c < cols; c++){
+          for(var r = 0; r < rows; r++){
+
+
+            if(window.cells[c][r].top) {
+              ctx.beginPath();
+              ctx.moveTo(c * rectWidth, r * rectHeight);
+              ctx.lineTo((c+1) * rectWidth, r * rectHeight);
+              ctx.strokeStyle = "black";
+              ctx.stroke();
+              ctx.closePath();
+            }
+
+            if(window.cells[c][r].left) {
+              ctx.beginPath();
+              ctx.moveTo(c * rectWidth, r * rectHeight);
+              ctx.lineTo(c * rectWidth, (r+1) * rectHeight);
+              ctx.strokeStyle = "black";
+              ctx.stroke();
+              ctx.closePath();
+            }
+
+          }
+        }
+        placeStart();
+        placeEnd();
+        drawStartAndEnd();
+      }
+      
+      function solveMaze(){
+        for(var c = 0; c < cols; c++){
+          for(var r = 0; r < rows; r++){
+            window.cells[c][r].visited = false;
+          }
+        }
+        
+        performSolve(startx,starty);
+        drawStartAndEnd();
+      }
+      
+      function performSolve(x,y){
+          
+          if(x==endx && y==endy){
+            return true;
+          }
+          
+          window.cells[x][y].visited = true;
+        
+          if(y>0){
+            if(!window.cells[x][y].top && !window.cells[x][y-1].visited){
+              if(performSolve(x,y-1)){
+                fillCell(x,y,"lightgreen");
+                return true;
+              }
+            }
+          }
+        
+          if(y<rows-1){
+            if(!window.cells[x][y+1].top && !window.cells[x][y+1].visited){
+              if(performSolve(x,y + 1)){
+                fillCell(x,y,"lightgreen");
+                return true;
+              }
+              
+            }
+          }
+        
+          if(x>0){
+            if(!window.cells[x][y].left && !window.cells[x-1][y].visited){
+              if(performSolve(x - 1,y)){
+                fillCell(x,y,"lightgreen");
+                return true;
+              }
+            }
+          }
+        
+          if(x<cols-1){
+            if(!window.cells[x+1][y].left && !window.cells[x+1][y].visited){
+              if(performSolve(x + 1,y)){
+                fillCell(x,y,"lightgreen");
+                return true;
+              }
+            }
+          }
+
+      }
+
+      function fillCell(x,y,color){
+        ctx.beginPath();
+        ctx.rect(x * rectWidth + rectWidth * .1 , y * rectHeight + rectHeight * .1 , rectWidth * .8, rectHeight * .8);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      function placeStart(){
+        startx = Math.floor(Math.random() * cols);
+        starty = Math.floor(Math.random() * rows);
+
+        x = startx;
+        y = starty;
+      }
+
+      function placeEnd(){
+        endx = startx;
+        endy = starty;
+        while(endx==startx && endy==starty){
+          endx = Math.floor(Math.random() * cols);
+          endy = Math.floor(Math.random() * rows);
+        }
+      }
+
+      function drawStartAndEnd(){
+        fillCell(startx,starty,"green")
+        fillCell(endx,endy,"red")
+        if(x==endx && y==endy){
+          alert("Congratulations! You Won!");
+        }
+      }
+
+      function moveUp(){
+        fillCell(x,y,"lightgrey");
+        if(y>0){
+          if(!window.cells[x][y].top){
+            y = y - 1;
+          }
+        }
+        fillCell(x,y,"grey");
+        drawStartAndEnd();
+      }
+
+      function moveDown(){
+        fillCell(x,y,"lightgrey");
+        if(y<rows-1){
+          if(!window.cells[x][y+1].top){
+            y = y + 1;
+          }
+        }
+        fillCell(x,y,"grey");
+        drawStartAndEnd();
+      }
+
+      function moveLeft(){
+        fillCell(x,y,"lightgrey");
+        if(x>0){
+          if(!window.cells[x][y].left){
+            x = x - 1;
+          }
+        }
+        fillCell(x,y,"grey");
+        drawStartAndEnd();
+      }
+
+      function moveRight(){
+        fillCell(x,y,"lightgrey");
+        if(x<cols-1){
+          if(!window.cells[x+1][y].left){
+            x = x + 1;
+          }
+        }
+        fillCell(x,y,"grey");
+        drawStartAndEnd();
+      }
+
+      generateMaze();
+
+      document.getElementById("generate").addEventListener("click", generateMaze);
+      document.getElementById("solvemaze").addEventListener("click", solveMaze);
+
+      document.getElementById("up").addEventListener("click", moveUp);
+      document.getElementById("down").addEventListener("click", moveDown);
+      document.getElementById("left").addEventListener("click", moveLeft);
+      document.getElementById("right").addEventListener("click", moveRight);
+      
+      
+    </script>
+  </body>
+</html>
